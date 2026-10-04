@@ -46,11 +46,11 @@ class IncidentBoardTest {
         val missedA = board.raise(RaiseIncidentRequest("Missed one"))
         val missedB = board.raise(RaiseIncidentRequest("Missed two"))
 
-        val replay = board.replayAfter(seen)
+        val resume = board.replayAfter(seen)
 
-        assertNotNull(replay)
-        assertEquals(2, replay.size, "exactly the two events after the cursor")
-        val ids = replay.filterIsInstance<ServerMessage.Raised>().map { it.incident.id }
+        assertIs<IncidentBoard.Resume.Replay>(resume)
+        assertEquals(2, resume.messages.size, "exactly the two events after the cursor")
+        val ids = resume.messages.filterIsInstance<ServerMessage.Raised>().map { it.incident.id }
         assertEquals(listOf(missedA.id, missedB.id), ids, "and in the order they happened")
     }
 
@@ -63,15 +63,40 @@ class IncidentBoardTest {
 
             repeat(10) { board.raise(RaiseIncidentRequest("Event $it")) }
 
-            assertNull(
+            assertIs<IncidentBoard.Resume.TooOld>(
                 board.replayAfter(0),
-                "asking from before the buffer starts must return null, not a silently truncated list",
+                "asking from before the buffer starts must say so, not return a silently truncated list",
             )
-            assertNotNull(
+            assertIs<IncidentBoard.Resume.Replay>(
                 board.replayAfter(9),
                 "a cursor still inside the buffer is replayable",
             )
         }
+
+    @Test
+    fun `a cursor ahead of the sequence means this server restarted, not that the client lagged`() =
+        runTest {
+            // A fresh board is exactly what a restarted process has: the client
+            // still holds a cursor from the previous one.
+            val board = IncidentBoard()
+            board.raise(RaiseIncidentRequest("First event of the new sequence"))
+
+            assertIs<IncidentBoard.Resume.Restarted>(
+                board.replayAfter(7),
+                "a cursor we will not reach for six more events cannot be ours",
+            )
+        }
+
+    @Test
+    fun `a cursor exactly at the sequence is up to date, not a restart`() = runTest {
+        val board = IncidentBoard()
+        val latest = board.raise(RaiseIncidentRequest("Only event"))
+
+        val resume = board.replayAfter(latest.seq)
+
+        assertIs<IncidentBoard.Resume.Replay>(resume)
+        assertEquals(emptyList(), resume.messages, "nothing missed, and nothing invented")
+    }
 
     @Test
     fun `the snapshot reports the sequence the stream is up to`() = runTest {

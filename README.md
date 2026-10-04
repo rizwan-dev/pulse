@@ -15,15 +15,6 @@ Android and iOS clients live in
 Multiplatform module implementing the same resume-by-sequence protocol, with a
 shared Compose Multiplatform UI.
 
-### Known gap
-
-`IncidentBoard.replayAfter(since)` returns an empty list when `since` is *ahead*
-of the server's own sequence — which happens whenever the server restarts while
-a client is connected. It should instead report that the resume cannot be
-honoured and send a snapshot, exactly as it already does for a cursor that has
-fallen too far behind. The mobile client defends itself against this today; the
-fix belongs here.
-
 ---
 
 ## Why this exists
@@ -46,7 +37,7 @@ Every change carries a monotonically increasing `seq`. The client remembers the
 last one it applied, and reconnects with it:
 
 ```
-ws://localhost:8080/ws?since=42
+ws://localhost:9191/ws?since=42
 ```
 
 The server replays exactly what was missed. There is no full re-fetch, no
@@ -66,6 +57,16 @@ replayed after reconnect: ["Pushed while connected","Missed one","Missed two"]
 **Sequence numbers, not timestamps.** Ordering by wall clock breaks when two
 events land in the same millisecond or the clock steps. A counter gives a total
 order and an unambiguous cursor.
+
+**A resume has three answers, not two.** The cursor is inside the buffer, or
+older than it, or *ahead of the server's own sequence* — which is what a client
+holds after the server restarts. The third case went unnoticed until the mobile
+client hit it: `replayAfter` matched nothing and returned an empty list,
+indistinguishable from "you are up to date", so the client sat on a board the
+server no longer had and kept asking to resume from a cursor the server would
+not reach for several more events, silently missing every one of them. A restart
+is not a lag — the client missed nothing, the server lost everything — so it now
+gets a plain snapshot rather than a "you fell behind by −7 events" message.
 
 **The replay buffer is bounded.** History is capped at 500 messages. A client
 gone longer than that is told it *lagged* and handed a fresh snapshot, rather
@@ -158,7 +159,8 @@ worth reading.
 ## Running without Docker
 
 ```bash
-cd pulse && ./gradlew run          # :8080
+cd pulse && ./gradlew run          # :9191 — not 8080, which almost
+                                   # everything else already wants
 cd web && npm install && npm run dev   # :3000
 ```
 

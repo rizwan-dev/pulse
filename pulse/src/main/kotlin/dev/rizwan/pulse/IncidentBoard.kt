@@ -55,11 +55,37 @@ class IncidentBoard(private val historySize: Int = HISTORY) {
         ServerMessage.Snapshot(incidents.values.toList(), sequence.get())
     }
 
-    /** Messages after [since], or null when [since] has fallen out of the buffer. */
-    suspend fun replayAfter(since: Long): List<ServerMessage>? = mutex.withLock {
+    /**
+     * The answer to "I have seen up to [since], what did I miss?".
+     *
+     * Three distinct answers, not two. Returning a nullable list conflated the
+     * two failures, and a client cannot react correctly to a reason it was
+     * never told.
+     */
+    sealed interface Resume {
+        /** The cursor is inside the buffer: exactly what was missed, in order. */
+        data class Replay(val messages: List<ServerMessage>) : Resume
+
+        /** The cursor is older than the buffer. The client fell behind. */
+        data object TooOld : Resume
+
+        /** The cursor is ahead of this server. The server restarted. */
+        data object Restarted : Resume
+    }
+
+    suspend fun replayAfter(since: Long): Resume = mutex.withLock {
+        // A cursor ahead of our own sequence cannot have come from this
+        // process: it restarted and began counting again, so the client is
+        // holding a board from a server that no longer exists. Replaying
+        // "everything after 7" against a sequence at 0 matches nothing, so the
+        // old code returned an empty list - indistinguishable from "you are
+        // up to date" - and the client sat on a stale board indefinitely.
+        if (since > sequence.get()) return@withLock Resume.Restarted
+
         val oldest = history.firstOrNull()?.seqOrNull()
-        if (oldest != null && since < oldest - 1) return@withLock null
-        history.filter { (it.seqOrNull() ?: 0L) > since }
+        if (oldest != null && since < oldest - 1) return@withLock Resume.TooOld
+
+        Resume.Replay(history.filter { (it.seqOrNull() ?: 0L) > since })
     }
 
     suspend fun raise(request: RaiseIncidentRequest): Incident {

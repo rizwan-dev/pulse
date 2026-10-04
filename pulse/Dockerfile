@@ -23,8 +23,8 @@ USER app
 
 COPY --from=build /build/build/install/pulse/ /app/
 
-EXPOSE 8080
+EXPOSE 9191
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=10 \
-  CMD curl -fsS http://localhost:8080/health || exit 1
+  CMD curl -fsS http://localhost:9191/health || exit 1
 
 ENTRYPOINT ["/app/bin/pulse"]

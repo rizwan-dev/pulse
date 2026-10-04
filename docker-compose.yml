@@ -10,12 +10,12 @@ services:
     environment:
       ALLOWED_ORIGINS: http://localhost:3000
     ports:
-      - "8080:8080"
+      - "9191:9191"
 
   web:
     build: ./web
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_API_URL: http://localhost:9191
     ports:
       - "3000:3000"
     depends_on:

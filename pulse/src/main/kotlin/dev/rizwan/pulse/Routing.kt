@@ -63,16 +63,25 @@ fun Application.configureRouting(board: IncidentBoard) {
                 if (since == null) {
                     sendMessage(json, board.snapshot())
                 } else {
-                    val missed = board.replayAfter(since)
-                    if (missed == null) {
-                        val snapshot = board.snapshot()
-                        sendMessage(json, ServerMessage.Lagged(
-                            missed = snapshot.seq - since,
-                            resumeFrom = snapshot.seq,
-                        ))
-                        sendMessage(json, snapshot)
-                    } else {
-                        missed.forEach { sendMessage(json, it) }
+                    when (val resume = board.replayAfter(since)) {
+                        is IncidentBoard.Resume.Replay ->
+                            resume.messages.forEach { sendMessage(json, it) }
+
+                        IncidentBoard.Resume.TooOld -> {
+                            val snapshot = board.snapshot()
+                            sendMessage(json, ServerMessage.Lagged(
+                                missed = snapshot.seq - since,
+                                resumeFrom = snapshot.seq,
+                            ))
+                            sendMessage(json, snapshot)
+                        }
+
+                        // A restart is not a lag: the client missed nothing,
+                        // the server lost everything. Telling it that it fell
+                        // behind by a negative number of events would be worse
+                        // than useless, so it just gets the new truth.
+                        IncidentBoard.Resume.Restarted ->
+                            sendMessage(json, board.snapshot())
                     }
                 }
 

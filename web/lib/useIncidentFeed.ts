@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConnectionState, Incident, ServerMessage } from './types';
 
-const HTTP = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+const HTTP = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:9191';
 const WS = HTTP.replace(/^http/, 'ws');
 
 /** Capped exponential backoff. A tight reconnect loop is a self-inflicted DDoS. */
