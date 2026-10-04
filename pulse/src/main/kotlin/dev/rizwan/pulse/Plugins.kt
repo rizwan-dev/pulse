@@ -27,7 +27,7 @@ fun Application.configureSerialization() {
             ?: listOf("http://localhost:3000")
         origins.forEach { origin ->
             val url = java.net.URI(origin.trim())
-            allowHost("${'$'}{url.host}:${'$'}{url.port}", schemes = listOf(url.scheme))
+            allowHost("${url.host}:${url.port}", schemes = listOf(url.scheme))
         }
     }
 }

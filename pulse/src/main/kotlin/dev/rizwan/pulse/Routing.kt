@@ -41,7 +41,7 @@ fun Application.configureRouting(board: IncidentBoard) {
                 val request = call.receive<AcknowledgeRequest>()
                 val updated = board.acknowledge(id, request.by)
                 if (updated == null) {
-                    call.respond(HttpStatusCode.NotFound, ApiError("no incident with id ${'$'}id"))
+                    call.respond(HttpStatusCode.NotFound, ApiError("no incident with id $id"))
                 } else {
                     call.respond(updated)
                 }

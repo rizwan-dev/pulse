@@ -27,6 +27,29 @@ class LiveFeedTest {
         }
 
     @Test
+    fun `the browser origin the web client runs on is actually allowed`() = testApplication {
+        application { module() }
+
+        // The CORS allowlist is built by string interpolation, and an escaping
+        // slip once made it register the literal text "${url.host}:${url.port}"
+        // - a host no browser can ever match. Every unit test still passed,
+        // because none of them sent an Origin header. The web client simply
+        // could not reach the API. This asserts the header that proves it can.
+        val response = client.post("/api/incidents") {
+            header(HttpHeaders.Origin, "http://localhost:3000")
+            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            setBody("""{"title":"From the browser","severity":"INFO","source":"web"}""")
+        }
+
+        assertEquals(HttpStatusCode.Created, response.status)
+        assertEquals(
+            "http://localhost:3000",
+            response.headers[HttpHeaders.AccessControlAllowOrigin],
+            "without this header the browser discards the response",
+        )
+    }
+
+    @Test
     fun `a new client is sent the current board on connect`() = testApplication {
         application { module() }
         val client = createClient { install(WebSockets) }
