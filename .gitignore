@@ -14,3 +14,8 @@ next-env.d.ts
 .idea/
 *.iml
 .kotlin/
+
+# Next.js writes these for AI coding tools on every dev run. They are not part
+# of the project and should not land in its history.
+AGENTS.md
+CLAUDE.md
