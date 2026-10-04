@@ -1,0 +1,16 @@
+# Gradle / Kotlin
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node
+node_modules/
+.next/
+out/
+next-env.d.ts
+
+# Tooling
+.DS_Store
+.idea/
+*.iml
+.kotlin/

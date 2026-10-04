@@ -1,0 +1,23 @@
+# docker compose up --build
+#
+# There is no database. The board is in memory on purpose: this repository is
+# about the realtime layer - connection lifetime, fan-out, backpressure and
+# resuming after a drop - and a persistence layer would only be noise around it.
+
+services:
+  api:
+    build: ./pulse
+    environment:
+      ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "8080:8080"
+
+  web:
+    build: ./web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
