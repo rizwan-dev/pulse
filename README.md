@@ -10,6 +10,20 @@ docker compose up --build
 Open <http://localhost:3000> — then open it again in a second window. Raise an
 incident in one and watch it appear in the other, with the viewer count on both.
 
+Android and iOS clients live in
+[pulse-mobile](https://github.com/rizwan-dev/pulse-mobile): one Kotlin
+Multiplatform module implementing the same resume-by-sequence protocol, with a
+shared Compose Multiplatform UI.
+
+### Known gap
+
+`IncidentBoard.replayAfter(since)` returns an empty list when `since` is *ahead*
+of the server's own sequence — which happens whenever the server restarts while
+a client is connected. It should instead report that the resume cannot be
+honoured and send a snapshot, exactly as it already does for a cursor that has
+fallen too far behind. The mobile client defends itself against this today; the
+fix belongs here.
+
 ---
 
 ## Why this exists
